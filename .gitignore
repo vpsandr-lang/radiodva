@@ -2,7 +2,11 @@
 ai-dj/tracks/*.wav
 ai-dj/tracks/*.mp3
 ai-dj/tracks/*.ogg
+ai_dj/tracks/*.wav
+ai_dj/tracks/*.mp3
+ai_dj/tracks/*.ogg
 api/*.json
 *.log
 __pycache__/
 *.pyc
+/tmp/radio/

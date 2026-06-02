@@ -42,4 +42,4 @@ DJ_INTRO_SEC = 4         # How long DJ talks before track
 DJ_OUTRO_SEC = 3         # How long DJ talks after track
 
 # Paths
-TRACKS_DIR = "/root/Radio/ai-dj/tracks"
+TRACKS_DIR = "/root/Radio/ai_dj/tracks"

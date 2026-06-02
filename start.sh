@@ -1,34 +1,36 @@
 #!/bin/bash
-# RADIO DVA — Full system startup with proper daemonization
+# RADIO DVA — Start all services
 
-echo "🎧 RADIO DVA Starting..."
 cd /root/Radio
 
-# 1. Icecast (already running? kill and restart)
-killall -q icecast2 2>/dev/null
-sleep 2
-setsid su -s /bin/sh -c "icecast2 -c /etc/icecast2/icecast.xml" nobody &>/dev/null &
-sleep 4
-echo "  Icecast: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8888/)"
+echo "🎧 RADIO DVA Starting..."
+echo "========================="
 
-# 2. API
-setsid python3 /root/Radio/api/server.py &>/tmp/radio/api.log &
-sleep 2
-echo "  API: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:5050/api/now-playing)"
+# 1. Generate initial playlist if needed
+if [ ! -f /tmp/radio/current_broadcast.mp3 ]; then
+    echo "📀 Generating initial audio..."
+    mkdir -p /tmp/radio
+fi
 
-# 3. Web
+# 2. Start API server (with built-in AI DJ broadcaster)
+echo "🚀 Starting API server on :5050..."
+setsid python3 -u api/server.py &>/tmp/radio/api.log &
+API_PID=$!
+sleep 3
+
+# 3. Start web server for static files
+echo "🌐 Starting web server on :8000..."
 setsid python3 -m http.server 8000 --directory /root/Radio &>/tmp/radio/web.log &
+WEB_PID=$!
 sleep 1
-echo "  Web: $(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/index.html)"
 
-# 4. Broadcaster
-setsid python3 -u /tmp/radio/simple_live.py &>/tmp/radio/broadcast.log &
-sleep 10
-echo "  Stream: $(curl -s --max-time 4 -o /dev/null -w '%{http_code}' http://localhost:8888/stream)"
-
-PUBLIC_IP=$(curl -s ifconfig.me 2>/dev/null | grep -v '^$' | head -1)
 echo ""
 echo "✅ RADIO DVA LIVE!"
-echo "   📻 http://$PUBLIC_IP:8888/stream"
-echo "   🌐 http://$PUBLIC_IP:8000"
-echo "   📡 http://$PUBLIC_IP:5050/api/now-playing"
+echo "   📡 API:      http://localhost:5050"
+echo "   🎵 Stream:   http://localhost:5050/api/stream"
+echo "   🌐 Website:  http://localhost:8000"
+echo "   📊 Status:   http://localhost:5050/api/health"
+echo ""
+
+# Wait
+wait $API_PID

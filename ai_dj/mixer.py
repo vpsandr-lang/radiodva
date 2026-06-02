@@ -4,7 +4,7 @@ from pathlib import Path
 
 class AudioMixer:
     def __init__(self):
-        self.dir = Path("/root/Radio/ai-dj/tracks")
+        self.dir = Path("/root/Radio/ai_dj/tracks")
         self.dir.mkdir(parents=True, exist_ok=True)
         self.sr = 44100
     

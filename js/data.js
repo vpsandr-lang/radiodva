@@ -6,7 +6,7 @@
 const RADIO_CONFIG = {
     name: 'RADIO DVA',
     tagline: 'Двойная Волна',
-    streamUrl: 'http://localhost:8888/stream',
+    streamUrl: '/api/stream',
     streamType: 'audio/mpeg',
     api: '/api',
     aiHosts: [
@@ -29,9 +29,9 @@ const TRACK_HISTORY = [
 ];
 
 const CURRENT_TRACK = {
-    title: 'Prada',
-    artist: 'cassö, RAYE, D-Block Europe',
+    title: 'RADIO DVA',
+    artist: 'Двойная Волна',
     cover: null,
-    flag: '🌍',
+    flag: '🎵',
     host: 'Алекс'
 };

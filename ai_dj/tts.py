@@ -4,7 +4,7 @@ from pathlib import Path
 
 class TTSGenerator:
     def __init__(self):
-        self.dir = Path("/root/Radio/ai-dj/tracks")
+        self.dir = Path("/root/Radio/ai_dj/tracks")
         self.dir.mkdir(parents=True, exist_ok=True)
     
     def generate(self, text, dj_name="Алекс", filename=None):
