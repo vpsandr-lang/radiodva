@@ -159,11 +159,13 @@ class FileBroadcaster:
         except:
             pass
 
-
 def start_broadcaster():
-    """Start the file broadcaster thread."""
+    """Start the file broadcaster in a background thread."""
     import threading
-    t = FileBroadcaster()
-    t.daemon = True
+    t = threading.Thread(target=_run_broadcaster, daemon=True)
     t.start()
     return t
+
+def _run_broadcaster():
+    bc = FileBroadcaster()
+    bc.run()
