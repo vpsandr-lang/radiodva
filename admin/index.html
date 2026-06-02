@@ -55,7 +55,7 @@
     </div>
 </div>
 <script>
-const API = 'http://localhost:5050';
+const API = '';
 
 async function updateNowPlaying() {
     const data = {
@@ -104,7 +104,7 @@ async function loadStats() {
         el.innerHTML = `
             <p>👥 Слушателей: <strong>${s.listeners}</strong></p>
             <p>📈 Пик сегодня: <strong>${s.today_peak}</strong></p>
-            <p>🎵 Всего треков: <strong>${s.total_tracks_played}</strong></p>
+            <p>🎵 Всего треков: <strong>${s.tracks_played}</strong></p>
         `;
     } catch(e) {
         el.innerHTML = '<p style="color:rgba(255,255,255,0.3)">API недоступен</p>';
