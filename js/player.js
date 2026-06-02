@@ -1,5 +1,6 @@
 /**
- * RADIO DVA — Audio Player (Fixed for HTTP)
+ * RADIO DVA — Audio Player (File-based streaming)
+ * Plays the current_broadcast.mp3 file, loops on end.
  */
 
 class RadioPlayer {
@@ -10,14 +11,14 @@ class RadioPlayer {
         this.streamUrl = RADIO_CONFIG.streamUrl;
         this.audio.volume = this.volume;
         this.listeners = {};
+        this.retryTimeout = null;
 
-        // Event handlers
-        this.audio.addEventListener('play', () => this.isPlaying = true);
-        this.audio.addEventListener('pause', () => this.isPlaying = false);
-        this.audio.addEventListener('error', (e) => this.emit('error', 'Ошибка подключения'));
+        // Events
+        this.audio.addEventListener('error', () => this._onError());
+        this.audio.addEventListener('ended', () => this._onEnded());
+        this.audio.addEventListener('canplay', () => this._onReady());
+        this.audio.addEventListener('loadstart', () => this.emit('status', 'connecting'));
         this.audio.addEventListener('waiting', () => this.emit('status', 'buffering'));
-        this.audio.addEventListener('canplay', () => { if(this.isPlaying) this.emit('status', 'playing'); });
-        this.audio.addEventListener('loadedmetadata', () => { if(this.isPlaying) this.emit('status', 'playing'); });
     }
 
     on(event, callback) {
@@ -37,10 +38,11 @@ class RadioPlayer {
     play() {
         if (this.isPlaying) return;
         this.emit('status', 'connecting');
-        
-        this.audio.src = this.streamUrl;
+
+        // Force reload to get fresh data
+        this.audio.src = this.streamUrl + '?t=' + Date.now();
         this.audio.load();
-        
+
         const promise = this.audio.play();
         if (promise !== undefined) {
             promise.then(() => {
@@ -48,7 +50,7 @@ class RadioPlayer {
                 this.emit('status', 'playing');
             }).catch(err => {
                 console.warn('Play error:', err);
-                this.emit('error', 'Нажми на кнопку Play (браузер блокирует автозапуск)');
+                this.emit('error', 'Нажми Play (браузер блокирует автозапуск)');
                 this.emit('status', 'stopped');
             });
         }
@@ -59,12 +61,41 @@ class RadioPlayer {
         this.audio.src = '';
         this.audio.load();
         this.isPlaying = false;
+        if (this.retryTimeout) {
+            clearTimeout(this.retryTimeout);
+            this.retryTimeout = null;
+        }
         this.emit('status', 'stopped');
     }
 
     setVolume(val) {
         this.volume = Math.max(0, Math.min(1, val));
         this.audio.volume = this.volume;
+    }
+
+    _onError() {
+        this.isPlaying = false;
+        this.emit('error', 'Ошибка загрузки. Переподключаюсь...');
+        this.emit('status', 'stopped');
+        // Retry after 3s
+        if (this.retryTimeout) clearTimeout(this.retryTimeout);
+        this.retryTimeout = setTimeout(() => {
+            if (this.isPlaying) this.play();
+        }, 3000);
+    }
+
+    _onEnded() {
+        // File ended - reload for fresh content
+        if (this.isPlaying) {
+            this.emit('status', 'connecting');
+            this.audio.src = this.streamUrl + '?t=' + Date.now();
+            this.audio.load();
+            this.audio.play().catch(() => {});
+        }
+    }
+
+    _onReady() {
+        if (this.isPlaying) this.emit('status', 'playing');
     }
 
     destroy() {
