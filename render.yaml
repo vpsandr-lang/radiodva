@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: radiodva-api
+    runtime: python
+    region: frankfurt
+    plan: free
+    buildCommand: pip install flask flask-cors
+    startCommand: python api/server.py
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+    healthCheckPath: /api/now-playing
+
+  - type: web
+    name: radiodva-web
+    runtime: static
+    region: frankfurt
+    buildCommand: echo "Static site ready"
+    staticPublishPath: ./
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
