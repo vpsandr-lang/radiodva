@@ -1,0 +1,11 @@
+{
+  "name": "radiodva-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for RADIO DVA",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "post:now": "node index.js --now"
+  },
+  "type": "module"
+}

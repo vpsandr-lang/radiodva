@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>RADIO DVA | Двойная Волна — 50/50 Россия и Мир</title>
+    <meta name="description" content="RADIO DVA — онлайн-радио с живым диджеем. 50% топ-хитов России и 50% мировых бестселлеров. Слушай 24/7.">
+    <meta name="keywords" content="радио онлайн, русские хиты, мировые хиты, диджей, музыка, радио два, radiodva">
+    <meta name="author" content="RADIO DVA">
+    <meta name="yandex-verification" content="REPLACE_WITH_YOUR_YANDEX_KEY" />
+    <meta name="google-site-verification" content="REPLACE_WITH_YOUR_GOOGLE_KEY" />
+    <meta name="theme-color" content="#6366f1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="RADIO DVA — Двойная Волна">
+    <meta property="og:description" content="50% топ-хитов России + 50% мировых бестселлеров. Живой эфир 24/7.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://radiodva.ru">
+    <meta property="og:image" content="https://radiodva.ru/assets/icons/icon-512.svg">
+    <meta property="og:locale" content="ru_RU">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="RADIO DVA — Двойная Волна">
+    <meta name="twitter:description" content="50/50 Россия и Мир. Живой эфир.">
+
+    <link rel="canonical" href="https://radiodva.ru">
+    <link rel="manifest" href="/pwa/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/assets/icons/icon-192.svg">
+    <link rel="apple-touch-icon" href="/assets/icons/icon-192.svg">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+
+    <!-- Inline critical CSS for above-fold content -->
+    <style>
+        body { background:#0b0b1a; color:#e0e0f0; font-family:'Inter',sans-serif; margin:0; }
+        .minimal-loader { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0b0b1a; z-index:99999; transition:opacity 0.6s; }
+        .minimal-loader.hide { opacity:0; pointer-events:none; }
+        .loader-ring { width:48px; height:48px; border:3px solid rgba(99,102,241,0.1); border-top-color:#6366f1; border-radius:50%; animation:spin 0.8s linear infinite; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+    </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "RadioBroadcastService",
+  "name": "RADIO DVA",
+  "description": "50% топ-хитов России + 50% мировых бестселлеров. AI-powered radio with virtual hosts Алекс and Лина.",
+  "url": "https://radiodva.ru",
+  "broadcastFrequency": "Digital",
+  "broadcastTimezone": "Europe/Moscow",
+  "inLanguage": ["ru", "en"],
+  "genre": ["Music", "Entertainment", "Talk"],
+  "potentialAction": {
+    "@type": "ListenAction",
+    "target": {
+      "@type": "EntryPoint",
+      "url": "https://radiodva.ru",
+      "actionPlatform": "http://schema.org/DesktopWebPlatform http://schema.org/MobileWebPlatform"
+    }
+  },
+  "author": {
+    "@type": "Person",
+    "name": "RADIO DVA Team"
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- Loader -->
+<div class="minimal-loader" id="loader">
+    <div class="loader-ring"></div>
+</div>
+
+<!-- Navbar -->
+<nav class="navbar" id="navbar">
+    <div class="container nav-container">
+        <a href="#" class="logo">
+            <span class="logo-icon">◈</span>
+            <span class="logo-text">RADIO <span class="logo-accent">DVA</span></span>
+        </a>
+        <ul class="nav-links" id="navLinks">
+            <li><a href="#player">Эфир</a></li>
+            <li><a href="#schedule">Треки</a></li>
+            <li><a href="#programs">Программы</a></li>
+            <li><a href="#chat">Чат</a></li>
+            <li><a href="#dj">DJ</a></li>
+            <li><a href="#advert">Реклама</a></li>
+            <li><a href="#contacts">Контакты</a></li>
+            <li><a href="#" id="requestSongBtn" class="nav-request">🎤 Заказать</a></li>
+        </ul>
+        <button class="hamburger" id="hamburger" aria-label="Меню">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</nav>
+
+<!-- Hero Section -->
+<section class="hero" id="player">
+    <div class="hero-bg">
+        <div class="equalizer" id="equalizer">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+        </div>
+    </div>
+
+    <!-- Canvas Visualizer -->
+    <canvas class="hero-viz" id="vizCanvas"></canvas>
+
+    <div class="container hero-content">
+        <div class="hero-badge" id="liveBadge">LIVE</div>
+        <h1 class="hero-title">Двойная Волна</h1>
+        <p class="hero-subtitle">50% топ-хитов России · 50% мировых бестселлеров</p>
+        <p class="hero-desc">Твой ведущий и диджей в одном флаконе. Микс, который держит в тонусе.</p>
+
+        <!-- Now Playing with Vinyl -->
+        <div class="now-playing" id="nowPlaying">
+            <div class="np-cover-wrapper">
+                <div class="np-cover" id="npCover">
+                    <div class="vinyl-record" id="vinylRecord">
+                        <div class="vinyl-label" id="vinylLabel">◈</div>
+                    </div>
+                </div>
+            </div>
+            <div class="np-info">
+                <span class="np-status">СЕЙЧАС В ЭФИРЕ</span>
+                <h2 class="np-title" id="npTitle">Загрузка...</h2>
+                <p class="np-artist" id="npArtist">RADIO DVA</p>
+                <div class="np-progress">
+                    <div class="np-progress-bar" id="npProgressBar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Player Controls -->
+        <div class="player-controls">
+            <button class="btn-play" id="btnPlay" aria-label="Play/Pause">
+                <svg class="play-icon" viewBox="0 0 24 24" width="32" height="32">
+                    <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+                </svg>
+                <svg class="pause-icon" viewBox="0 0 24 24" width="32" height="32" style="display:none">
+                    <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+                    <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+                </svg>
+            </button>
+            <div class="player-meta">
+                <span class="player-status" id="playerStatus">Нажми Play, чтобы начать</span>
+                <div class="player-timing" id="playerTiming">СТРИМ LIVE</div>
+            </div>
+            <div class="volume-control">
+                <svg class="vol-icon vol-high" viewBox="0 0 24 24" width="20" height="20">
+                    <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8.5v7a4.49 4.49 0 0 0 2.5-3.5z" fill="currentColor"/>
+                    <path d="M14 3.23v2.06a7.5 7.5 0 0 1 0 13.42v2.06A9.5 9.5 0 0 0 14 3.23z" fill="currentColor" opacity="0.6"/>
+                </svg>
+                <input type="range" class="volume-slider" id="volumeSlider" min="0" max="1" step="0.05" value="0.7">
+            </div>
+            <button class="btn-request-mobile" id="requestSongBtnMobile" aria-label="Заказать трек">🎤</button>
+        </div>
+
+        <div class="stream-url-bar">
+            <span class="stream-label">Stream URL:</span>
+            <input type="text" class="stream-input" id="streamUrl" value="https://radio-stream.example.com/live" readonly>
+            <button class="btn-copy" id="btnCopyStream" aria-label="Copy URL">📋</button>
+            <span class="listener-count" id="headerListeners" title="Слушателей онлайн">👥 0</span>
+        </div>
+    </div>
+</section>
+
+<!-- Track History -->
+<section class="section" id="schedule">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">ПЛЕЙЛИСТ</span>
+            <h2 class="section-title">Что звучало</h2>
+            <p class="section-desc">Свежие треки, которые мы замиксовали в эфире</p>
+        </div>
+        <div class="track-actions">
+            <button class="btn btn-ghost" id="requestSongBtn2">🎤 Заказать трек</button>
+            <span class="track-filter-label">Фильтр:</span>
+            <div class="track-filters">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="🇷🇺">🇷🇺 Русские</button>
+                <button class="filter-btn" data-filter="🌍">🌍 Мировые</button>
+            </div>
+        </div>
+        <div class="track-list" id="trackList"></div>
+    </div>
+</section>
+
+<!-- Programs Schedule -->
+<section class="section section-dark" id="programs">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">РАСПИСАНИЕ</span>
+            <h2 class="section-title">Программы</h2>
+            <p class="section-desc">Что и когда звучит в эфире RADIO DVA</p>
+        </div>
+        <div class="program-grid" id="programGrid"></div>
+    </div>
+</section>
+
+<!-- Chat / Guestbook -->
+<section class="section" id="chat">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">ЧАТ</span>
+            <h2 class="section-title">Гостевая книга</h2>
+            <p class="section-desc">Оставь след — поздоровайся с ведущим и слушателями</p>
+        </div>
+        <div class="chat-grid">
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-empty">👋 Будь первым! Напиши что-нибудь...</div>
+            </div>
+            <form class="chat-form" id="chatForm">
+                <input type="text" class="chat-input-name" id="chatName" placeholder="Твоё имя" maxlength="30" required>
+                <div class="chat-input-row">
+                    <input type="text" class="chat-input-msg" id="chatText" placeholder="Напиши что-нибудь..." maxlength="500" required>
+                    <button type="submit" class="btn-chat-send">➤</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- DJ Section -->
+<section class="section section-dark" id="dj">
+    <div class="container">
+        <div class="dj-grid">
+            <div class="dj-visual">
+                <div class="dj-frame">
+                    <div class="dj-placeholder">
+                        <svg viewBox="0 0 200 200" width="200" height="200">
+                            <circle cx="100" cy="80" r="35" fill="rgba(255,255,255,0.1)"/>
+                            <rect x="55" y="120" width="90" height="50" rx="20" fill="rgba(255,255,255,0.1)"/>
+                            <circle cx="160" cy="50" r="12" fill="rgba(255,255,255,0.05)"/>
+                            <circle cx="40" cy="40" r="8" fill="rgba(255,255,255,0.05)"/>
+                            <circle cx="170" cy="140" r="6" fill="rgba(255,255,255,0.05)"/>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+            <div class="dj-info">
+                <span class="section-tag">ДИДЖЕЙ & ВЕДУЩИЙ</span>
+                <h2 class="section-title">Один в двух лицах</h2>
+                <p class="dj-text">
+                    Я сам собираю плейлисты, микширую треки и веду эфиры. Каждый выход в эфир — 
+                    это авторский микс из 50% топовых российских хитов и 50% мировых чартов. 
+                    Никаких роботов — только живой звук, твой ведущий за пультом.
+                </p>
+                <div class="dj-stats">
+                    <div class="stat">
+                        <span class="stat-num" id="trackCount">0</span>
+                        <span class="stat-label">Треков в ротации</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-num" id="listenerCount">0</span>
+                        <span class="stat-label">Сейчас слушают</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-num" id="peakCount">0</span>
+                        <span class="stat-label">Пик сегодня</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Advertising Section -->
+<section class="section" id="advert">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">РЕКЛАМА</span>
+            <h2 class="section-title">Размещение рекламы</h2>
+            <p class="section-desc">Охвати свою аудиторию вместе с RADIO DVA</p>
+        </div>
+        <div class="advert-grid">
+            <div class="advert-card">
+                <div class="advert-icon">📢</div>
+                <h3>Аудио-ролик</h3>
+                <p>Прямое включение твоего аудио-спота в эфир. Длительность: 15–30 сек.</p>
+                <ul class="advert-features">
+                    <li>До 3 прокруток в день</li>
+                    <li>Таргетинг по времени</li>
+                    <li>Профессиональная озвучка</li>
+                </ul>
+                <p class="advert-price">от 5 000 ₽ / неделя</p>
+            </div>
+            <div class="advert-card featured">
+                <div class="card-badge">ХИТ</div>
+                <div class="advert-icon">🎙️</div>
+                <h3>Интервью + спот</h3>
+                <p>15-минутное интервью в прямом эфире + твой аудио-ролик в ротации.</p>
+                <ul class="advert-features">
+                    <li>Интервью с ведущим</li>
+                    <li>Аудио-спот 30 сек</li>
+                    <li>Пост в соцсетях</li>
+                    <li>Упоминание в эфире</li>
+                </ul>
+                <p class="advert-price">от 15 000 ₽ / месяц</p>
+            </div>
+            <div class="advert-card">
+                <div class="advert-icon">🎯</div>
+                <h3>Партнёрство</h3>
+                <p>Долгосрочное сотрудничество с брендом. Интеграция в эфир и соцсети.</p>
+                <ul class="advert-features">
+                    <li>Брендинг эфира</li>
+                    <li>Эксклюзивная рубрика</li>
+                    <li>Промо в соцсетях</li>
+                    <li>Джинглы в ротации</li>
+                </ul>
+                <p class="advert-price">договорная</p>
+            </div>
+        </div>
+        <div class="advert-cta">
+            <p>Хочешь в эфир? Напиши нам!</p>
+            <a href="/advert.html" class="btn btn-primary">Подробнее для рекламодателей</a>
+        </div>
+    </div>
+</section>
+
+<!-- Song Request Modal -->
+<div class="modal-overlay" id="requestModal">
+    <div class="modal">
+        <button class="modal-close" id="modalClose">&times;</button>
+        <div class="modal-icon">🎤</div>
+        <h3 class="modal-title">Заказать трек</h3>
+        <p class="modal-desc">Есть запрос? Напиши — и я поставлю твой трек в эфир!</p>
+        <form class="modal-form" id="requestForm">
+            <input type="text" placeholder="Твоё имя" required maxlength="30">
+            <input type="text" placeholder="Название трека" required maxlength="100">
+            <input type="text" placeholder="Исполнитель" required maxlength="100">
+            <textarea placeholder="Пару слов в эфир (необязательно)" rows="3" maxlength="300"></textarea>
+            <button type="submit" class="btn btn-primary" style="width:100%;justify-content:center;">
+                Отправить в эфир
+            </button>
+        </form>
+        <div class="modal-success" id="requestSuccess">
+            <div style="font-size:3rem;margin-bottom:12px;">✅</div>
+            <h3>Принято!</h3>
+            <p style="color:rgba(224,224,240,0.5);">Трек улетел в студию. Если будет настроение — обязательно поставлю!</p>
+        </div>
+    </div>
+</div>
+
+<!-- Sticky Mini Player -->
+<div class="mini-player" id="miniPlayer">
+    <div class="mini-cover" id="miniCover">
+        <div class="mini-vinyl" id="miniVinyl">◈</div>
+    </div>
+    <div class="mini-info">
+        <span class="mini-title" id="miniTitle">RADIO DVA</span>
+        <span class="mini-artist" id="miniArtist">Двойная Волна</span>
+    </div>
+    <button class="mini-btn" id="miniBtnPlay" aria-label="Play/Pause">
+        <svg class="play-icon" viewBox="0 0 24 24" width="22" height="22">
+            <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+        </svg>
+        <svg class="pause-icon" viewBox="0 0 24 24" width="22" height="22" style="display:none">
+            <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+            <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+        </svg>
+    </button>
+</div>
+
+<!-- Contacts Section -->
+<section class="section section-dark" id="contacts">
+    <div class="container">
+        <div class="section-header">
+            <span class="section-tag">КОНТАКТЫ</span>
+            <h2 class="section-title">Связь с нами</h2>
+            <p class="section-desc">Для рекламы, предложений и просто тёплых слов</p>
+        </div>
+        <div class="contacts-grid">
+            <form class="contact-form" id="contactForm">
+                <input type="text" placeholder="Ваше имя" required>
+                <input type="email" placeholder="Email для связи" required>
+                <select required>
+                    <option value="">Тема обращения</option>
+                    <option>Реклама и партнёрство</option>
+                    <option>Предложение трека</option>
+                    <option>Технический вопрос</option>
+                    <option>Просто сообщение</option>
+                </select>
+                <textarea placeholder="Ваше сообщение" rows="5" required></textarea>
+                <button type="submit" class="btn btn-primary" style="justify-content:center;">Отправить</button>
+            </form>
+            <div class="contact-info">
+                <div class="contact-item">
+                    <span class="contact-icon">📧</span>
+                    <div>
+                        <strong>Email</strong>
+                        <p>hello@radiodva.ru</p>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-icon">📱</span>
+                    <div>
+                        <strong>Telegram</strong>
+                        <p>@radiodva_bot</p>
+                    </div>
+                </div>
+                <div class="contact-item">
+                    <span class="contact-icon">🌐</span>
+                    <div>
+                        <strong>Соцсети</strong>
+                        <p>@radiodva — везде</p>
+                    </div>
+                </div>
+                <div class="contact-socials">
+                    <a href="#" class="social-link" aria-label="Telegram">📨</a>
+                    <a href="#" class="social-link" aria-label="VK">💬</a>
+                    <a href="#" class="social-link" aria-label="YouTube">▶️</a>
+                    <a href="#" class="social-link" aria-label="Instagram">📸</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container footer-content">
+        <div class="footer-brand">
+            <span class="logo-icon">◈</span>
+            <span>RADIO <strong>DVA</strong></span>
+        </div>
+        <p class="footer-text">50/50 — Россия и Мир. Живой эфир 24/7.</p>
+        <div class="footer-links">
+            <a href="/sitemap.xml">Sitemap</a>
+            <span class="footer-divider">·</span>
+            <a href="/advert.html">Рекламодателям</a>
+            <span class="footer-divider">·</span>
+            <a href="#" id="footerRequestBtn">Заказать трек</a>
+        </div>
+        <p class="footer-copy">© 2026 RADIO DVA. Все права защищены.</p>
+    </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script src="/js/data.js"></script>
+<script src="/js/player.js"></script>
+<script src="/js/main.js"></script>
+</body>
+</html>

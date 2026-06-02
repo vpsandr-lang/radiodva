@@ -1,0 +1,8 @@
+# Generated audio files
+ai-dj/tracks/*.wav
+ai-dj/tracks/*.mp3
+ai-dj/tracks/*.ogg
+api/*.json
+*.log
+__pycache__/
+*.pyc

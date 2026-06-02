@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./api:/opt/api
+    restart: unless-stopped
+    depends_on:
+      - stream
+
+  stream:
+    image: moul/icecast:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - ICECAST_ADMIN_USER=admin
+      - ICECAST_ADMIN_PASSWORD=changeme
+      - ICECAST_SOURCE_PASSWORD=hackme
+      - ICECAST_RELAY_PASSWORD=hackme
+      - ICECAST_HOSTNAME=radiodva.ru
+      - ICECAST_MAX_CLIENTS=100
+    restart: unless-stopped
+    volumes:
+      - ./icecast.xml:/etc/icecast2/icecast.xml
+
+  # API server for now-playing, stats, messages
+  api:
+    image: python:3.11-alpine
+    working_dir: /opt/api
+    volumes:
+      - ./api:/opt/api
+    command: python3 server.py
+    ports:
+      - "5050:5050"
+    restart: unless-stopped

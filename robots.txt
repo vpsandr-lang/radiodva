@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Sitemap: https://radiodva.ru/sitemap.xml
+
+# Admin panel
+Disallow: /admin/
+Disallow: /api/
+Disallow: /bot/
