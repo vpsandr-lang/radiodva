@@ -1,8 +1,40 @@
-"""RADIO DVA AI — Warm, polite and friendly radio DJ scripts."""
+"""RADIO DVA AI — Warm, motivational and polite radio DJ scripts."""
 import random
 
+# Warm motivational phrases about success and life
+MOTIVATION = [
+    "Помните: каждый день — это новый шаг к вашей мечте.",
+    "Верьте в себя — у вас всё получится!",
+    "Никогда не сдавайтесь. Лучшие моменты — впереди.",
+    "Маленькие шаги ведут к большим победам.",
+    "Ваша целеустремлённость вдохновляет. Продолжайте в том же духе!",
+    "Каждое утро — это новый шанс изменить свою жизнь.",
+    "Успех любит терпеливых. Всё обязательно получится!",
+    "Делайте то, что любите, и любите то, что делаете.",
+    "Ваша энергия и настрой творят чудеса. Верьте в свой путь!",
+    "Не бойтесь мечтать. Мечты имеют свойство сбываться.",
+    "Секрет успеха — начать. А вы уже в пути!",
+    "Каждый из вас — автор своей истории. Пишите её с любовью.",
+    "Дорогу осилит идущий. Главное — не останавливаться.",
+]
+
+LIGHT_MOTIVATION = [
+    " Отличного настроения и продуктивного дня!",
+    " Пусть всё задуманное сбудется!",
+    " Действуйте — и успех придёт!",
+    " Желаю вам уверенности и вдохновения!",
+    " Пусть этот трек зарядит вас энергией на новые свершения!",
+    " Верьте в лучшее — и оно обязательно случится!",
+    "",
+    " Дорогу осилит идущий!",
+    " Пусть сегодня всё получается легко и радостно!",
+    " Вы на правильном пути!",
+    " Наслаждайтесь моментом и стройте планы на будущее!",
+    " Успех начинается с первого шага. А вы его уже сделали!",
+]
+
 # ============================================================
-# Алекс — Warm, energetic but polite. Smiles through the voice.
+# Алекс — Warm, energetic, motivational.
 # ============================================================
 DJ_ALEX = {
     "name": "Алекс",
@@ -24,7 +56,7 @@ DJ_ALEX = {
 }
 
 # ============================================================
-# Лина — Soft, tender, very polite. Gentle smile in voice.
+# Лина — Soft, tender, very polite with warm motivation.
 # ============================================================
 DJ_LINA = {
     "name": "Лина",
@@ -44,6 +76,7 @@ DJ_LINA = {
     ],
 }
 
+
 class ScriptGenerator:
     def __init__(self, dj_name="Алекс"):
         self.dj = DJ_ALEX if dj_name == "Алекс" else DJ_LINA
@@ -56,30 +89,35 @@ class ScriptGenerator:
         intro = random.choice(self.dj["intro_templates"]).format(
             name=self.dj["name"], track=track["title"], artist=track["artist"])
         
-        # Add a gentle compliment about the track sometimes
-        gentle_comments = [
-            " Обожаю этот трек!",
-            " Такая красивая песня!",
-            " Ну очень душевно!",
-            "",
-            " Сердце радуется!",
-            " Просто великолепно!",
-        ]
+        # Sometimes add a gentle comment about the track
         if random.random() < 0.3:
-            intro += random.choice(gentle_comments)
+            gentle = random.choice([
+                " Обожаю этот трек!",
+                " Такая красивая песня!",
+                " Ну очень душевно!",
+                " Сердце радуется!",
+                " Просто великолепно!",
+            ])
+            intro += gentle
         
         outro = random.choice(self.dj["outro_templates"]).format(
             name=self.dj["name"], track=track["title"], artist=track["artist"])
         
-        # Sometimes add a warm wish
-        wishes = [
-            " Хорошего настроения!",
-            " Берегите себя!",
-            " Улыбайтесь чаще!",
-            "",
-            " До скорой встречи!",
-        ]
+        # Add motivational message (~30% chance)
+        if random.random() < 0.35:
+            outro += " " + random.choice(MOTIVATION)
+        
+        # Add light wish (~25% chance)
         if random.random() < 0.25:
-            outro += random.choice(wishes)
+            outro += random.choice(LIGHT_MOTIVATION)
+        elif random.random() < 0.15:
+            warm_wish = random.choice([
+                " Хорошего настроения!",
+                " Берегите себя!",
+                " Улыбайтесь чаще!",
+                " До скорой встречи!",
+                " Всего вам самого доброго!",
+            ])
+            outro += warm_wish
         
         return intro, outro
