@@ -1,4 +1,7 @@
-"""RADIO DVA AI — FFmpeg-based Mixer (zero memory overhead)."""
+"""RADIO DVA AI — FFmpeg Concatenation Mixer
+Concatenates: voice_intro (alone) → music (full) → voice_outro (alone).
+No simultaneous mixing — true radio format.
+"""
 import os, subprocess, hashlib, random
 from pathlib import Path
 
@@ -11,59 +14,66 @@ class AudioMixer:
         return None
 
     def create_broadcast_segment(self, music_wav, voice_intro_wav=None, voice_outro_wav=None):
-        """Mix intro + music + outro using ffmpeg (no Python memory)."""
+        """Create a segment by concatenating intro → music → outro sequentially.
+        Standard radio format: DJ speaks, song plays, DJ speaks again.
+        """
         h = hashlib.md5(f"{music_wav}:{voice_intro_wav}:{voice_outro_wav}:{random.random()}".encode()).hexdigest()[:10]
         out = f"/tmp/radio/segments/seg_{h}"
         os.makedirs("/tmp/radio/segments", exist_ok=True)
 
-        # Build ffmpeg filter for mixing intro + music + outro
-        # Use amix filter to combine up to 3 audio streams
-        
+        # Build list of valid inputs
         inputs = []
-        filter_parts = []
-        stream_idx = 0
-        
-        # Input files that actually exist
-        files = []
-        if voice_intro_wav and os.path.exists(voice_intro_wav):
-            files.append(("intro", voice_intro_wav))
-        if music_wav and os.path.exists(music_wav):
-            files.append(("music", music_wav))
-        if voice_outro_wav and os.path.exists(voice_outro_wav):
-            files.append(("outro", voice_outro_wav))
-        
-        if not files:
-            # Generate silence
+        input_labels = []
+
+        if voice_intro_wav and os.path.exists(voice_intro_wav) and os.path.getsize(voice_intro_wav) > 100:
+            inputs.append(voice_intro_wav)
+            input_labels.append("intro")
+
+        if music_wav and os.path.exists(music_wav) and os.path.getsize(music_wav) > 100:
+            inputs.append(music_wav)
+            input_labels.append("music")
+
+        if voice_outro_wav and os.path.exists(voice_outro_wav) and os.path.getsize(voice_outro_wav) > 100:
+            inputs.append(voice_outro_wav)
+            input_labels.append("outro")
+
+        if not inputs:
+            # Generate 10 seconds of silence
             subprocess.run([
                 "ffmpeg", "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
                 "-t", "10", "-acodec", "pcm_s16le",
                 f"{out}.wav"
             ], capture_output=True, timeout=30)
             return f"{out}.wav"
+
+        # For single input, just copy it
+        if len(inputs) == 1:
+            try:
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", inputs[0],
+                    "-acodec", "pcm_s16le", "-ac", "2", "-ar", "44100",
+                    f"{out}.wav"
+                ], capture_output=True, timeout=30)
+                if os.path.exists(f"{out}.wav") and os.path.getsize(f"{out}.wav") > 100:
+                    return f"{out}.wav"
+            except:
+                pass
+            return None
+
+        # For multiple inputs, concatenate sequentially
+        # Create concat filter: all inputs → concat
+        filter_parts = []
+        for i in range(len(inputs)):
+            filter_parts.append(f"[{i}:a]")
         
-        # Build filter graph
-        input_parts = []
-        for name, path in files:
-            input_parts.extend(["-i", path])
-        
-        # amix: mix all inputs
-        nb_inputs = len(files)
-        filter_str = f"amix=inputs={nb_inputs}:duration=longest:dropout_transition=2"
-        
-        # Volume adjustments
-        # Intro/outro: 0.9, music: 0.65
-        vol_parts = []
-        for i, (name, _) in enumerate(files):
-            vol = "0.65" if name == "music" else "0.85"
-            vol_parts.append(f"[{i}:a]volume={vol}[a{i}]")
-        
-        vol_filter = ";".join(vol_parts)
-        mix_inputs = "".join(f"[a{i}]" for i in range(nb_inputs))
-        full_filter = f"{vol_filter};{mix_inputs}{filter_str}[out]"
-        
+        concat_filter = "".join(filter_parts) + f"concat=n={len(inputs)}:v=0:a=1[out]"
+
         try:
-            cmd = (["ffmpeg", "-y"] + input_parts + [
-                "-filter_complex", full_filter,
+            cmd = ["ffmpeg", "-y"]
+            for inp in inputs:
+                cmd.extend(["-i", inp])
+            cmd.extend([
+                "-filter_complex", concat_filter,
                 "-map", "[out]",
                 "-ac", "2", "-ar", "44100",
                 "-sample_fmt", "s16",
@@ -72,7 +82,7 @@ class AudioMixer:
             subprocess.run(cmd, capture_output=True, timeout=120)
         except subprocess.TimeoutExpired:
             pass
-        
+
         if os.path.exists(f"{out}.wav") and os.path.getsize(f"{out}.wav") > 100:
             return f"{out}.wav"
         return None
