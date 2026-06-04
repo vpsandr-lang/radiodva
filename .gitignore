@@ -10,3 +10,8 @@ api/*.json
 __pycache__/
 *.pyc
 /tmp/radio/
+new_tracks/
+tracks_real/
+ai_dj/tracks/
+ai_dj/tts_cache/
+download_tracks.sh

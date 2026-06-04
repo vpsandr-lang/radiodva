@@ -1,109 +1,134 @@
-"""RADIO DVA AI — Fast Audio Mixer using pre-generated tracks."""
-import os, wave, struct, math, hashlib, subprocess, random
+"""RADIO DVA AI — Real Audio Mixer using actual MP3 tracks."""
+import os, wave, struct, math, hashlib, subprocess, random, tempfile
 from pathlib import Path
 
 class AudioMixer:
     def __init__(self):
-        self.dir = Path("/root/Radio/ai_dj/tracks")
-        self.dir.mkdir(parents=True, exist_ok=True)
+        self.work_dir = Path("/tmp/radio/mixer")
+        self.work_dir.mkdir(parents=True, exist_ok=True)
         self.sr = 44100
-    
-    def get_music(self, style):
-        """Pick a pre-generated track."""
-        files = sorted(self.dir.glob(f"pre_{style}_*.wav"))
-        if files:
-            return str(random.choice(files))
-        return self._gen_fallback(style)
-    
-    def _gen_fallback(self, style):
-        path = str(self.dir / f"fallback_{style}.wav")
-        if os.path.exists(path) and os.path.getsize(path) > 1000:
-            return path
-        sr, dur = 44100, 5
-        key = 220 if style == "rus" else 261
-        samples = []
-        for i in range(sr * dur):
-            t = i / sr
-            val = sum(math.sin(2*math.pi*h*t)*0.06 for h in [key, key*1.25, key*1.5])
-            val += math.sin(2*math.pi*key*0.5*t)*0.2
-            val += math.sin(2*math.pi*200*(t*2%1/0.05))*0.1 if (t*2%1)<0.05 else 0
-            val *= min(t/0.3,1,(dur-t)/0.3)*0.4
-            val = max(-1,min(1,val))
-            samples.append(int(val*32767))
-        with wave.open(path,'w') as wf:
-            wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(sr)
-            for s in samples:
-                wf.writeframes(struct.pack('<hh',s,s))
-        return path
-    
-    def _load(self, path):
+
+    def get_music(self, track):
+        """Get an MP3 file path for a track. Returns path or None."""
+        from music import get_track_path
+        return get_track_path(track)
+
+    def _load_audio(self, path, target_sr=44100, target_channels=2):
+        """Load any audio file into float array [0..1]."""
+        if not path or not os.path.exists(path):
+            return [0.0] * (target_sr * 2)  # 1 sec silence
+
+        # Normalize path
+        path = str(path)
+        
+        # Convert to WAV first
+        tmp_wav = self.work_dir / f"tmp_{hashlib.md5(path.encode()).hexdigest()[:10]}.wav"
         try:
-            with wave.open(path) as wf:
-                n, r, f = wf.getnchannels(), wf.getframerate(), wf.getnframes()
-                raw = wf.readframes(f)
-            import array
-            data = array.array('h', raw)
-            floats = [max(-1,min(1,d/32768.0)) for d in data]
-            if n == 1:
-                floats = [s for s in floats for _ in range(2)]
-            return floats
-        except:
-            return [0.0]*44100
-    
-    def create_broadcast_segment(self, music_wav, voice_intro_wav=None, voice_outro_wav=None):
-        music = self._load(music_wav) if music_wav and os.path.exists(music_wav) else []
-        intro = self._load(voice_intro_wav) if voice_intro_wav and os.path.exists(voice_intro_wav) else []
-        outro = self._load(voice_outro_wav) if voice_outro_wav and os.path.exists(voice_outro_wav) else []
+            if not tmp_wav.exists():
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", path,
+                    "-acodec", "pcm_s16le",
+                    "-ar", str(target_sr),
+                    "-ac", str(target_channels),
+                    str(tmp_wav)
+                ], capture_output=True, timeout=60)
+            
+            if tmp_wav.exists() and os.path.getsize(tmp_wav) > 100:
+                with wave.open(str(tmp_wav), 'r') as wf:
+                    n_channels = wf.getnchannels()
+                    sr = wf.getframerate()
+                    frames = wf.getnframes()
+                    raw = wf.readframes(frames)
+                
+                import array
+                data = array.array('h', raw)
+                floats = [max(-1.0, min(1.0, d / 32768.0)) for d in data]
+                
+                # If mono, duplicate to stereo
+                if n_channels == 1:
+                    floats = [s for s in floats for _ in range(2)]
+                
+                return floats
+        except subprocess.TimeoutExpired:
+            pass
+        except Exception as e:
+            print(f"  ⚠️ load_audio error: {e}", flush=True)
         
-        gap = int(self.sr * 0.3)
-        fade = int(self.sr * 0.2)
+        return [0.0] * (target_sr * 2)
+
+    def _load_wav(self, path):
+        """Load WAV file into float array."""
+        return self._load_audio(path)
+
+    def create_broadcast_segment(self, music_path=None, voice_intro_wav=None, voice_outro_wav=None):
+        """Mix voice intro + music + voice outro into one WAV."""
+        # Load audio
+        intro = self._load_wav(voice_intro_wav) if voice_intro_wav else []
+        music = self._load_audio(music_path) if music_path else []
+        outro = self._load_wav(voice_outro_wav) if voice_outro_wav else []
+        
+        fade = int(self.sr * 0.3)  # 300ms fade
+        gap = int(self.sr * 0.5)   # 500ms gap
+        
         total = len(intro) + gap + len(music) + gap + len(outro)
-        if total < 1000: total = int(self.sr * 4)
+        if total < self.sr * 10:  # Minimum 10 seconds
+            total = self.sr * 10
         
-        out = [0.0]*total; pos = 0
+        out = [0.0] * total
+        pos = 0
         
-        # Add intro
-        for i,s in enumerate(intro):
-            if pos+i >= len(out): break
-            f = 1.0 if len(intro)-i >= fade else (len(intro)-i)/fade
-            out[pos+i] += s * f * 0.8
+        # Add intro voice
+        for i, s in enumerate(intro):
+            if pos + i >= len(out):
+                break
+            fade_out = 1.0 if len(intro) - i >= fade else (len(intro) - i) / fade
+            out[pos + i] += s * fade_out * 0.85
         pos += len(intro) + gap
         
-        # Add music
-        for i,s in enumerate(music):
-            if pos+i >= len(out): break
-            f = 1.0
-            if i < fade: f = i/fade
-            if len(music)-i < fade: f = min(f, (len(music)-i)/fade)
-            out[pos+i] += s * f * 0.7
+        # Add music (crossfade)
+        for i, s in enumerate(music):
+            if pos + i >= len(out):
+                break
+            fade_in = i / fade if i < fade else 1.0
+            fade_out = 1.0 if len(music) - i >= fade else (len(music) - i) / fade
+            out[pos + i] += s * fade_in * fade_out * 0.75
         pos += len(music) + gap
         
-        # Add outro
-        for i,s in enumerate(outro):
-            if pos+i >= len(out): break
-            f = i/fade if i < fade else 1.0
-            out[pos+i] += s * f * 0.8
+        # Add outro voice
+        for i, s in enumerate(outro):
+            if pos + i >= len(out):
+                break
+            fade_in = i / fade if i < fade else 1.0
+            out[pos + i] += s * fade_in * 0.85
         
         # Normalize
         peak = max(max(abs(s) for s in out), 0.01)
-        gain = min(1.0, 0.92/peak)
+        gain = min(0.98, 0.92 / peak)
         
-        h = hashlib.md5(f"{music_wav}{voice_intro_wav}{voice_outro_wav}".encode()).hexdigest()[:10]
-        path = str(self.dir / f"seg_{h}.wav")
+        # Write WAV
+        h = hashlib.md5(f"{music_path}:{voice_intro_wav}:{voice_outro_wav}".encode()).hexdigest()[:12]
+        out_path = str(self.work_dir / f"seg_{h}.wav")
         
-        with wave.open(path, 'w') as wf:
-            wf.setnchannels(2); wf.setsampwidth(2); wf.setframerate(self.sr)
+        with wave.open(out_path, 'w') as wf:
+            wf.setnchannels(2)
+            wf.setsampwidth(2)
+            wf.setframerate(self.sr)
             for s in out:
-                si = max(-32768, min(32767, int(s*gain*32767)))
-                wf.writeframes(struct.pack('<hh',si,si))
-        return path
-    
-    def wav_to_mp3(self, wav_path):
-        mp3 = wav_path.replace('.wav','.mp3')
+                si = max(-32768, min(32767, int(s * gain * 32767)))
+                wf.writeframes(struct.pack('<hh', si, si))
+        
+        return out_path
+
+    def wav_to_mp3(self, wav_path, bitrate=128):
+        """Convert WAV to MP3 using lame."""
+        mp3_path = wav_path.replace('.wav', '.mp3')
         try:
-            subprocess.run(['lame','--quiet','-h','-b','128',wav_path,mp3],
-                          capture_output=True,timeout=30)
-            if os.path.exists(mp3) and os.path.getsize(mp3)>100:
-                return mp3
-        except: pass
+            subprocess.run([
+                'lame', '--quiet', '-h', '-b', str(bitrate),
+                wav_path, mp3_path
+            ], capture_output=True, timeout=60)
+            if os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 100:
+                return mp3_path
+        except:
+            pass
         return wav_path

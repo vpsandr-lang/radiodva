@@ -1,45 +1,81 @@
-"""RADIO DVA AI — Simple TTS using internal synthesis."""
-import os, wave, struct, math, hashlib
+"""RADIO DVA AI — Real TTS using edge-tts for Russian voices."""
+import os, subprocess, tempfile, hashlib, time
 from pathlib import Path
 
 class TTSGenerator:
     def __init__(self):
-        self.dir = Path("/root/Radio/ai_dj/tracks")
-        self.dir.mkdir(parents=True, exist_ok=True)
-    
+        self.cache_dir = Path("/root/Radio/ai_dj/tts_cache")
+        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        self.voices = {
+            "Алекс": "ru-RU-DmitryNeural",
+            "Лина": "ru-RU-SvetlanaNeural",
+        }
+        # Fast rate: +30% speed, slight pitch up for clarity
+        self.rate_map = {
+            "Алекс": "+30%",
+            "Лина": "+30%",
+        }
+
     def generate(self, text, dj_name="Алекс", filename=None):
         if not text or not text.strip():
             return None
-        if filename is None:
-            h = hashlib.md5(text.encode()).hexdigest()[:10]
-            filename = f"tts_{h}.wav"
-        out = str(self.dir / filename)
-        if os.path.exists(out) and os.path.getsize(out) > 100:
-            return out
         
-        sr = 22050
-        dur = min(5.0, max(1.0, len(text) * 0.05))
-        base_pitch = 220 if dj_name == "Алекс" else 280  # Male/Female difference
+        # Cache key
+        h = hashlib.md5(f"{text}:{dj_name}".encode()).hexdigest()
+        cached = self.cache_dir / f"{h}.wav"
+        if cached.exists() and os.path.getsize(cached) > 1000:
+            return str(cached)
+
+        voice = self.voices.get(dj_name, "ru-RU-DmitryNeural")
+        rate = self.rate_map.get(dj_name, "+30%")
+
+        # Generate TTS via edge-tts
+        tmp_mp3 = self.cache_dir / f"tmp_{h}.mp3"
+        tmp_wav = self.cache_dir / f"{h}.wav"
         
-        samples = []
-        for i in range(int(sr * dur)):
-            t = i / sr
-            # Speech-like modulation: pitch bends and vibrato
-            pitch = base_pitch + math.sin(t * 2.5) * 60 + math.sin(t * 5.3) * 25
-            # Formants for richness
-            val = (math.sin(2*math.pi*pitch*t) * 0.12 +
-                   math.sin(2*math.pi*pitch*1.5*t + math.sin(t*4)*0.3) * 0.06 +
-                   math.sin(2*math.pi*pitch*2.1*t) * 0.04 +
-                   math.sin(2*math.pi*40*t) * 0.06)  # breath
-            # Envelope
-            fade = min(t/0.05, 1, (dur-t)/0.05)
-            val *= fade * 0.3
-            val = max(-1, min(1, val))
-            samples.append(int(val * 32767))
+        try:
+            cmd = [
+                "edge-tts",
+                "--voice", voice,
+                "--rate", rate,
+                "--text", text,
+                "--write-media", str(tmp_mp3),
+            ]
+            result = subprocess.run(cmd, capture_output=True, timeout=60, text=True)
+            if result.returncode != 0:
+                print(f"  ⚠️ edge-tts error: {result.stderr[:200]}", flush=True)
+                return None
+            
+            if not tmp_mp3.exists() or os.path.getsize(tmp_mp3) < 100:
+                return None
+
+            # Convert MP3 to WAV at 44100Hz mono
+            subprocess.run([
+                "ffmpeg", "-y", "-i", str(tmp_mp3),
+                "-acodec", "pcm_s16le", "-ar", "44100", "-ac", "1",
+                "-af", "atempo=1.45",
+                str(tmp_wav)
+            ], capture_output=True, timeout=30)
+            
+            if tmp_wav.exists() and os.path.getsize(tmp_wav) > 1000:
+                # Clean up tmp mp3
+                try: os.remove(str(tmp_mp3))
+                except: pass
+                return str(tmp_wav)
+        except subprocess.TimeoutExpired:
+            print(f"  ⚠️ edge-tts timeout for text: {text[:50]}", flush=True)
+        except Exception as e:
+            print(f"  ⚠️ TTS error: {e}", flush=True)
         
-        with wave.open(out, 'w') as wf:
-            wf.setnchannels(1)
-            wf.setsampwidth(2)
-            wf.setframerate(sr)
-            wf.writeframes(struct.pack('<' + 'h'*len(samples), *samples))
-        return out
+        return None
+
+    def get_audio_duration(self, wav_path):
+        """Get duration of a WAV file in seconds."""
+        try:
+            import wave
+            with wave.open(wav_path, 'r') as wf:
+                frames = wf.getnframes()
+                rate = wf.getframerate()
+                return frames / float(rate) if rate > 0 else 0
+        except:
+            return 0

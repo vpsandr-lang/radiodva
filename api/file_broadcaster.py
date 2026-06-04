@@ -1,13 +1,7 @@
+"""RADIO DVA — Simple File-Based Broadcaster
+Generates MP3 segments with real DJ voices and real music tracks.
 """
-RADIO DVA — Simple File-Based Broadcaster
-Generates MP3 segments and concatenates them into current_broadcast.mp3
-"""
-import sys
-import os
-import time
-import json
-import random
-import subprocess
+import sys, os, time, json, random, subprocess, threading, wave, struct, math
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -18,13 +12,15 @@ from ai_dj.mixer import AudioMixer
 
 STREAM_FILE = "/tmp/radio/current_broadcast.mp3"
 SEGMENT_DIR = "/tmp/radio/segments/"
+CACHE_DIR = "/tmp/radio/cache/"
 os.makedirs(SEGMENT_DIR, exist_ok=True)
+os.makedirs(CACHE_DIR, exist_ok=True)
 
 NP_FILE = os.path.join(os.path.dirname(__file__), "now-playing.json")
 
 
 class FileBroadcaster:
-    """Background thread that generates MP3 segments and writes to a file."""
+    """Background thread that generates broadcast segments."""
 
     def __init__(self):
         self.music = MusicScheduler()
@@ -40,82 +36,98 @@ class FileBroadcaster:
         self.running = False
 
     def run(self):
-        print("AI DJ File Broadcaster started", flush=True)
-        time.sleep(3)
+        print("=" * 50, flush=True)
+        print("  RADIO DVA — AI Radio Starting", flush=True)
+        print("=" * 50, flush=True)
+        
+        # Create initial test tone
+        self._write_test_tone()
+        time.sleep(1)
 
-        # Generate initial test tone
-        self._generate_test_tone()
-
-        # Main loop
         while self.running:
             try:
                 self._generate_and_write()
             except Exception as e:
-                print(f"Error: {e}", flush=True)
+                print(f"  ❌ Error: {e}", flush=True)
                 import traceback
                 traceback.print_exc()
                 time.sleep(5)
 
-    def _generate_test_tone(self):
-        """Generate a test tone as placeholder."""
-        import wave, struct, math
+    def _write_test_tone(self):
+        """Write a short test tone so the stream file exists."""
         sr = 44100
-        duration = 10
+        dur = 2
         samples = []
-        for i in range(sr * duration):
+        for i in range(sr * dur):
             t = i / sr
-            val = (math.sin(2 * math.pi * 220 * t) * 0.1 +
-                   math.sin(2 * math.pi * 277.18 * t) * 0.08 +
-                   math.sin(2 * math.pi * 329.63 * t) * 0.06)
-            fade = min(t / 0.05, 1.0, (duration - t) / 0.05)
-            val *= fade * 0.5
-            val = max(-1, min(1, val))
+            val = math.sin(2 * math.pi * 220 * t) * 0.15
+            fade = min(t / 0.05, 1.0, (dur - t) / 0.05)
+            val *= fade
             samples.append(int(val * 32767))
-
-        wav_path = "/tmp/radio/seed_tone.wav"
-        with wave.open(wav_path, 'w') as wf:
+        
+        wav = "/tmp/radio/init_tone.wav"
+        with wave.open(wav, 'w') as wf:
             wf.setnchannels(2)
             wf.setsampwidth(2)
             wf.setframerate(sr)
             for s in samples:
                 wf.writeframes(struct.pack('<hh', s, s))
-
-        mp3_path = "/tmp/radio/seed_tone.mp3"
-        try:
-            subprocess.run(['lame', '--quiet', '-h', '-b', '64', wav_path, mp3_path],
-                          capture_output=True, timeout=30)
-            if os.path.exists(mp3_path):
-                os.system(f"cp {mp3_path} {STREAM_FILE}")
-                print(f"Test tone: {os.path.getsize(STREAM_FILE)//1024}KB", flush=True)
-        except:
-            pass
+        
+        mp3 = "/tmp/radio/init_tone.mp3"
+        subprocess.run(['lame', '--quiet', '-h', '-b', '64', wav, mp3],
+                      capture_output=True, timeout=30)
+        
+        if os.path.exists(mp3):
+            with open(mp3, 'rb') as f:
+                data = f.read()
+            with open(STREAM_FILE, 'wb') as f:
+                f.write(data)
+            print(f"  🔈 Initial tone: {len(data)//1024}KB", flush=True)
 
     def _generate_and_write(self):
-        """Generate one segment and append to stream file."""
+        """Generate one broadcast segment and append to stream."""
         # Switch host every 3 segments
         if self.segment_count > 0 and self.segment_count % 3 == 0:
             self.host = "Лина" if self.host == "Алекс" else "Алекс"
             self.scripts.switch_dj(self.host)
+            print(f"  🎙️ DJ switch → {self.host}", flush=True)
 
+        # Pick track
         track = self.music.next_track()
-        flag = track.get("flag", "🌍")
+        ts = time.strftime('%H:%M:%S')
+        flag = track.get("flag", "🎵")
         title = track.get("title", "Unknown")
         artist = track.get("artist", "Unknown")
-        ts = time.strftime('%H:%M:%S')
+        genre = track.get("genre", "world")
 
         print(f"[{ts}] #{self.segment_count} {flag} {title} — {artist} [{self.host}]", flush=True)
 
-        # Generate script and voiceovers
+        # Generate DJ scripts
         hour = time.localtime().tm_hour
         intro_text, outro_text = self.scripts.generate_show_segment(track, None, hour)
+        
+        print(f"  📝 Intro: {intro_text[:100]}", flush=True)
+        print(f"  📝 Outro: {outro_text[:100]}", flush=True)
+
+        # Generate voiceovers via TTS
         intro_path = self.tts.generate(intro_text, self.host, f"seg_{self.segment_count}_i.wav")
         outro_path = self.tts.generate(outro_text, self.host, f"seg_{self.segment_count}_o.wav")
+        
+        if intro_path:
+            dur = self.tts.get_audio_duration(intro_path)
+            print(f"  🎤 Intro voice: {dur:.1f}s", flush=True)
+        if outro_path:
+            dur = self.tts.get_audio_duration(outro_path)
+            print(f"  🎤 Outro voice: {dur:.1f}s", flush=True)
 
-        # Get music
-        style = "rus" if flag == "🇷🇺" else "world"
-        music_path = self.mixer.get_music(style)
+        # Get music file
+        music_path = self.mixer.get_music(track)
+        if music_path:
+            print(f"  🎵 Music: {os.path.basename(music_path)} ({os.path.getsize(music_path)//1024}KB)", flush=True)
+        else:
+            print(f"  ⚠️ No music file for {track['id']}, using fallback", flush=True)
 
-        # Create segment
+        # Create broadcast segment
         segment_wav = self.mixer.create_broadcast_segment(
             music_wav=music_path,
             voice_intro_wav=intro_path,
@@ -129,17 +141,19 @@ class FileBroadcaster:
             with open(mp3_path, 'rb') as f:
                 mp3_data = f.read()
 
-            # If first segment, overwrite; otherwise append
             mode = 'wb' if self.segment_count == 0 else 'ab'
             with open(STREAM_FILE, mode) as f:
                 f.write(mp3_data)
 
-            size_kb = os.path.getsize(STREAM_FILE) // 1024
-            print(f"Broadcast: {size_kb}KB total", flush=True)
+            total_kb = os.path.getsize(STREAM_FILE) // 1024
+            seg_kb = len(mp3_data) // 1024
+            print(f"  📡 Broadcast: +{seg_kb}KB = {total_kb}KB total", flush=True)
 
         # Update now-playing
         self._update_now_playing(track)
         self.segment_count += 1
+        
+        # Small pause between segments
         time.sleep(random.uniform(0.3, 1.0))
 
     def _update_now_playing(self, track):
@@ -149,6 +163,7 @@ class FileBroadcaster:
                 "artist": track.get("artist", "Двойная Волна"),
                 "flag": track.get("flag", "🎵"),
                 "host": self.host,
+                "genre": track.get("genre", "mixed"),
                 "listeners": 0,
                 "tracks_played": self.segment_count + 1,
                 "uptime_hours": int((time.time() - self.start_time) / 3600),
@@ -159,9 +174,9 @@ class FileBroadcaster:
         except:
             pass
 
+
 def start_broadcaster():
     """Start the file broadcaster in a background thread."""
-    import threading
     t = threading.Thread(target=_run_broadcaster, daemon=True)
     t.start()
     return t

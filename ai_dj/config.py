@@ -19,10 +19,7 @@ DJ_LINA = {
     "style": "плавная, загадочная, с лёгкой иронией",
 }
 
-# Music settings
-TRACK_DURATION_SEC = 10  # Demo duration (set to ~180 for real tracks)
-DJ_INTRO_SEC = 4
-DJ_OUTRO_SEC = 3
-
 # Paths
 TRACKS_DIR = "/root/Radio/ai_dj/tracks"
+TRACKS_REAL_DIR = "/root/Radio/tracks_real"
+NEW_TRACKS_DIR = "/root/Radio/new_tracks"
