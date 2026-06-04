@@ -1,6 +1,6 @@
 /**
  * RADIO DVA — Audio Player (Segment-based streaming)
- * Fixed: no auto-resume after pause.
+ * Fixed: pause actually stops. No auto-resume.
  */
 class RadioPlayer {
     constructor() {
@@ -11,12 +11,17 @@ class RadioPlayer {
         this.audio.volume = this.volume;
         this.listeners = {};
         this.retryTimeout = null;
+        this._userStopped = false;  // true when user explicitly pressed pause
 
         this.audio.addEventListener('error', () => this._onError());
         this.audio.addEventListener('ended', () => this._onEnded());
         this.audio.addEventListener('canplay', () => this._onReady());
-        this.audio.addEventListener('loadstart', () => this.emit('status', 'connecting'));
-        this.audio.addEventListener('waiting', () => this.emit('status', 'buffering'));
+        this.audio.addEventListener('loadstart', () => {
+            if (this.isPlaying && !this._userStopped) this.emit('status', 'connecting');
+        });
+        this.audio.addEventListener('waiting', () => {
+            if (this.isPlaying && !this._userStopped) this.emit('status', 'buffering');
+        });
     }
 
     on(event, callback) {
@@ -34,6 +39,7 @@ class RadioPlayer {
     }
 
     play() {
+        this._userStopped = false;
         this.emit('status', 'connecting');
         this.audio.src = this.streamUrl + '?t=' + Date.now();
         this.audio.load();
@@ -42,9 +48,11 @@ class RadioPlayer {
         if (promise !== undefined) {
             promise.then(() => {
                 this.isPlaying = true;
+                this._userStopped = false;
                 this.emit('status', 'playing');
             }).catch(err => {
                 console.warn('Play error:', err);
+                this.isPlaying = false;
                 this.emit('error', 'Нажми Play (браузер блокирует автозапуск)');
                 this.emit('status', 'stopped');
             });
@@ -52,14 +60,16 @@ class RadioPlayer {
     }
 
     stop() {
-        this.audio.pause();
-        this.audio.src = '';
-        this.audio.load();
+        // Set flags BEFORE resetting audio to prevent race conditions
         this.isPlaying = false;
+        this._userStopped = true;
         if (this.retryTimeout) {
             clearTimeout(this.retryTimeout);
             this.retryTimeout = null;
         }
+        this.audio.pause();
+        this.audio.removeAttribute('src');
+        this.audio.load();
         this.emit('status', 'stopped');
     }
 
@@ -69,13 +79,11 @@ class RadioPlayer {
     }
 
     _onError() {
+        if (!this.isPlaying || this._userStopped) return;
         this.emit('error', 'Ошибка загрузки. Переподключаюсь...');
-        this.emit('status', 'stopped');
-        // Only auto-retry if user still wants to play
-        if (!this.isPlaying) return;
         if (this.retryTimeout) clearTimeout(this.retryTimeout);
         this.retryTimeout = setTimeout(() => {
-            if (!this.isPlaying) return;
+            if (!this.isPlaying || this._userStopped) return;
             this.emit('status', 'connecting');
             this.audio.src = this.streamUrl + '?t=' + Date.now();
             this.audio.load();
@@ -84,8 +92,7 @@ class RadioPlayer {
     }
 
     _onEnded() {
-        // End of segment - only load next if user is still listening
-        if (!this.isPlaying) {
+        if (!this.isPlaying || this._userStopped) {
             this.emit('status', 'stopped');
             return;
         }
@@ -93,10 +100,9 @@ class RadioPlayer {
         this.audio.src = this.streamUrl + '?t=' + Date.now();
         this.audio.load();
         this.audio.play().catch(() => {
-            // Retry once after 2s, but only if user wants to play
-            if (!this.isPlaying) return;
+            if (!this.isPlaying || this._userStopped) return;
             setTimeout(() => {
-                if (!this.isPlaying) return;
+                if (!this.isPlaying || this._userStopped) return;
                 this.audio.src = this.streamUrl + '?t=' + Date.now();
                 this.audio.load();
                 this.audio.play().catch(() => {});
@@ -105,7 +111,7 @@ class RadioPlayer {
     }
 
     _onReady() {
-        if (this.isPlaying) this.emit('status', 'playing');
+        if (this.isPlaying && !this._userStopped) this.emit('status', 'playing');
     }
 
     destroy() {
