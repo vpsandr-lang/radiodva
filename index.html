@@ -39,10 +39,6 @@
     <!-- Inline critical CSS for above-fold content -->
     <style>
         body { background:#0b0b1a; color:#e0e0f0; font-family:'Inter',sans-serif; margin:0; }
-        .minimal-loader { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:#0b0b1a; z-index:99999; transition:opacity 0.6s; }
-        .minimal-loader.hide { opacity:0; pointer-events:none; }
-        .loader-ring { width:48px; height:48px; border:3px solid rgba(99,102,241,0.1); border-top-color:#6366f1; border-radius:50%; animation:spin 0.8s linear infinite; }
-        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
 <script type="application/ld+json">
 {
@@ -73,11 +69,6 @@
 <body>
 
 <!-- Loader -->
-<div class="minimal-loader" id="loader">
-    <div class="loader-ring"></div>
-</div>
-<script>setTimeout(function(){document.getElementById("loader").classList.add("hide")},800)</script>
-
 <!-- Navbar -->
 <nav class="navbar" id="navbar">
     <div class="container nav-container">
