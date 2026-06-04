@@ -1,8 +1,6 @@
 /**
- * RADIO DVA — Audio Player (File-based streaming)
- * Plays the current_broadcast.mp3 file, loops on end.
+ * RADIO DVA — Audio Player (Segment-based streaming)
  */
-
 class RadioPlayer {
     constructor() {
         this.audio = new Audio();
@@ -13,7 +11,6 @@ class RadioPlayer {
         this.listeners = {};
         this.retryTimeout = null;
 
-        // Events
         this.audio.addEventListener('error', () => this._onError());
         this.audio.addEventListener('ended', () => this._onEnded());
         this.audio.addEventListener('canplay', () => this._onReady());
@@ -36,10 +33,7 @@ class RadioPlayer {
     }
 
     play() {
-        if (this.isPlaying) return;
         this.emit('status', 'connecting');
-
-        // Force reload to get fresh data
         this.audio.src = this.streamUrl + '?t=' + Date.now();
         this.audio.load();
 
@@ -77,21 +71,29 @@ class RadioPlayer {
         this.isPlaying = false;
         this.emit('error', 'Ошибка загрузки. Переподключаюсь...');
         this.emit('status', 'stopped');
-        // Retry after 3s
+        // Retry after 3s (isPlaying was already set to false, so use a flag)
         if (this.retryTimeout) clearTimeout(this.retryTimeout);
         this.retryTimeout = setTimeout(() => {
-            if (this.isPlaying) this.play();
-        }, 3000);
-    }
-
-    _onEnded() {
-        // File ended - reload for fresh content
-        if (this.isPlaying) {
             this.emit('status', 'connecting');
             this.audio.src = this.streamUrl + '?t=' + Date.now();
             this.audio.load();
             this.audio.play().catch(() => {});
-        }
+        }, 3000);
+    }
+
+    _onEnded() {
+        // Load next segment
+        this.emit('status', 'connecting');
+        this.audio.src = this.streamUrl + '?t=' + Date.now();
+        this.audio.load();
+        this.audio.play().catch(() => {
+            // Retry once after 2s
+            setTimeout(() => {
+                this.audio.src = this.streamUrl + '?t=' + Date.now();
+                this.audio.load();
+                this.audio.play().catch(() => {});
+            }, 2000);
+        });
     }
 
     _onReady() {
