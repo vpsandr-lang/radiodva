@@ -1,42 +1,42 @@
-"""RADIO DVA AI — Music Library & Scheduler with genre rotation."""
+"""RADIO DVA AI — Music Library & Scheduler with genre rotation.
+Uses real MP3 files from tracks_real directory.
+"""
 import json, os, random
 from pathlib import Path
 
-TRACKS_REAL_DIR = "/root/Radio/tracks_real"
+TRACKS_REAL_DIR = "/root/Radio/ai_dj/tracks_real"
 NEW_TRACKS_DIR = "/root/Radio/new_tracks"
 
 # Track database — all real MP3 files
 TRACKS = [
     # Russian hits
-    {"id": "rus01", "title": "Поначалу", "artist": "Баста", "flag": "🇷🇺", "genre": "rus", "file": "rus01.mp3"},
-    {"id": "rus02", "title": "Я твоя", "artist": "Anna Asti", "flag": "🇷🇺", "genre": "rus", "file": "rus02.mp3"},
-    {"id": "rus03", "title": "Плакала", "artist": "Kazka", "flag": "🇷🇺", "genre": "rus", "file": "rus03.mp3"},
-    {"id": "rus04", "title": "Малиновая Лада", "artist": "Gayazovs Brothers", "flag": "🇷🇺", "genre": "rus", "file": "rus04.mp3"},
-    {"id": "rus05", "title": "Squad", "artist": "Miyagi & Andy Panda", "flag": "🇷🇺", "genre": "rus", "file": "rus05.mp3"},
-    {"id": "rus06", "title": "Зацепила", "artist": "Artik & Asti", "flag": "🇷🇺", "genre": "rus", "file": "rus06.mp3"},
-    {"id": "rus07", "title": "На часах ноль", "artist": "Feduk", "flag": "🇷🇺", "genre": "rus", "file": "rus07.mp3"},
-    {"id": "rus08", "title": "Венера-Юпитер", "artist": "Ваня Дмитриенко", "flag": "🇷🇺", "genre": "rus", "file": "rus08.mp3"},
-    {"id": "rus09", "title": "Не вдвоём", "artist": "Zivert", "flag": "🇷🇺", "genre": "rus", "file": "rus09.mp3"},
-    {"id": "rus10", "title": "Veni Vidi Vici", "artist": "Blizkey", "flag": "🇷🇺", "genre": "rus", "file": "rus10.mp3"},
+    {"id": "rus01", "title": "Поначалу", "artist": "Баста", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus02", "title": "Я твоя", "artist": "Anna Asti", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus03", "title": "Плакала", "artist": "Kazka", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus04", "title": "Малиновая Лада", "artist": "Gayazovs Brothers", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus05", "title": "Squad", "artist": "Miyagi & Andy Panda", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus06", "title": "Зацепила", "artist": "Artik & Asti", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus07", "title": "На часах ноль", "artist": "Feduk", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus08", "title": "Венера-Юпитер", "artist": "Ваня Дмитриенко", "flag": "🇷🇺", "genre": "rus"},
+    {"id": "rus09", "title": "Не вдвоём", "artist": "Zivert", "flag": "🇷🇺", "genre": "rus"},
     # World hits
-    {"id": "wld01", "title": "Blinding Lights", "artist": "The Weeknd", "flag": "🌍", "genre": "world", "file": "wld01.mp3"},
-    {"id": "wld02", "title": "Flowers", "artist": "Miley Cyrus", "flag": "🌍", "genre": "world", "file": "wld02.mp3"},
-    {"id": "wld03", "title": "As It Was", "artist": "Harry Styles", "flag": "🌍", "genre": "world", "file": "wld03.mp3"},
-    {"id": "wld04", "title": "Shape of You", "artist": "Ed Sheeran", "flag": "🌍", "genre": "world", "file": "wld04.mp3"},
-    {"id": "wld05", "title": "Starboy", "artist": "The Weeknd", "flag": "🌍", "genre": "world", "file": "wld05.mp3"},
-    {"id": "wld06", "title": "Cruel Summer", "artist": "Taylor Swift", "flag": "🌍", "genre": "world", "file": "wld06.mp3"},
-    {"id": "wld07", "title": "Lose Control", "artist": "Teddy Swims", "flag": "🌍", "genre": "world", "file": "wld07.mp3"},
-    {"id": "wld08", "title": "Beautiful Things", "artist": "Benson Boone", "flag": "🌍", "genre": "world", "file": "wld08.mp3"},
-    {"id": "wld09", "title": "Prada", "artist": "cassö, RAYE, D-Block Europe", "flag": "🌍", "genre": "world", "file": "wld09.mp3"},
-    {"id": "wld10", "title": "Good Luck, Babe!", "artist": "Chappell Roan", "flag": "🌍", "genre": "world", "file": "wld10.mp3"},
+    {"id": "wld01", "title": "Blinding Lights", "artist": "The Weeknd", "flag": "🌍", "genre": "world"},
+    {"id": "wld02", "title": "Flowers", "artist": "Miley Cyrus", "flag": "🌍", "genre": "world"},
+    {"id": "wld03", "title": "As It Was", "artist": "Harry Styles", "flag": "🌍", "genre": "world"},
+    {"id": "wld04", "title": "Shape of You", "artist": "Ed Sheeran", "flag": "🌍", "genre": "world"},
+    {"id": "wld05", "title": "Starboy", "artist": "The Weeknd", "flag": "🌍", "genre": "world"},
+    {"id": "wld06", "title": "Cruel Summer", "artist": "Taylor Swift", "flag": "🌍", "genre": "world"},
+    {"id": "wld07", "title": "Lose Control", "artist": "Teddy Swims", "flag": "🌍", "genre": "world"},
+    {"id": "wld08", "title": "Beautiful Things", "artist": "Benson Boone", "flag": "🌍", "genre": "world"},
+    {"id": "wld09", "title": "Prada", "artist": "cassö, RAYE, D-Block Europe", "flag": "🌍", "genre": "world"},
+    {"id": "wld10", "title": "Good Luck, Babe!", "artist": "Chappell Roan", "flag": "🌍", "genre": "world"},
     # Hip-hop
-    {"id": "hip01", "title": "Hip-Hop Beat", "artist": "Tracks联动", "flag": "🎤", "genre": "hiphop", "file": "hh.mp3"},
-    {"id": "hip02", "title": "Hip-Hop Flow", "artist": "Tracks联动", "flag": "🎤", "genre": "hiphop", "file": "hiphop2.mp3"},
+    {"id": "hh01", "title": "Hip Hop Beat", "artist": "Free Music", "flag": "🎤", "genre": "hiphop"},
+    {"id": "hh02", "title": "Hip Hop Flow", "artist": "Free Music", "flag": "🎤", "genre": "hiphop"},
     # Classical
-    {"id": "cla01", "title": "Classical Piece", "artist": "Классика", "flag": "🎻", "genre": "classical", "file": "classical_01.mp3"},
+    {"id": "cl01", "title": "Classical Piece", "artist": "Классика", "flag": "🎻", "genre": "classical"},
     # Jazz / Blues
-    {"id": "jaz01", "title": "Jazz Mood", "artist": "Jazz Ensemble", "flag": "🎷", "genre": "jazz", "file": "jazz.mp3"},
-    {"id": "jaz02", "title": "Blues Jam", "artist": "Blues Band", "flag": "🎷", "genre": "jazz", "file": "jazz2.mp3"},
+    {"id": "jz01", "title": "Jazz Mood", "artist": "Jazz Ensemble", "flag": "🎷", "genre": "jazz"},
 ]
 
 # Genre rotation: 40% Russian, 40% World, 10% Hip-hop, 5% Classical, 5% Jazz/Blues
@@ -57,15 +57,14 @@ GENRE_FLAGS = {
 }
 
 
-def get_track_path(track):
-    """Get the actual file path for a track."""
-    filename = track.get("file", "")
+def get_track_path(track_id):
+    """Get the actual file path for a track by its ID."""
     # Try tracks_real first
-    path = os.path.join(TRACKS_REAL_DIR, filename)
+    path = os.path.join(TRACKS_REAL_DIR, f"{track_id}.mp3")
     if os.path.exists(path):
         return path
-    # Try new_tracks
-    path = os.path.join(NEW_TRACKS_DIR, filename)
+    # Try with .wav extension
+    path = os.path.join(TRACKS_REAL_DIR, f"{track_id}.wav")
     if os.path.exists(path):
         return path
     return None
@@ -94,10 +93,9 @@ class MusicScheduler:
             random.shuffle(tracks_by_genre[g])
 
         # Build genre queue based on ratios
-        total_ratio = sum(r for _, r in GENRE_RATIOS)
         self.genre_queue = []
         for genre, ratio in GENRE_RATIOS:
-            count = max(1, round(ratio / total_ratio * 20))  # Scale to ~20 songs
+            count = max(1, ratio // 10)
             self.genre_queue.extend([genre] * count)
         random.shuffle(self.genre_queue)
 
@@ -110,18 +108,24 @@ class MusicScheduler:
                 continue
             idx = genre_pointers[genre] % len(pool)
             genre_pointers[genre] = idx + 1
-            track = pool[idx]
-            # Check file exists
-            if get_track_path(track):
+            track = pool[idx].copy()
+            # Set file path
+            track["file_path"] = get_track_path(track["id"])
+            track["style"] = genre
+            if track["file_path"]:
                 self.current_playlist.append(track)
             else:
-                print(f"  ⚠️ Track file not found: {track['id']} ({track.get('file', '?')})", flush=True)
+                print(f"  ⚠️ Track file not found: {track['id']}", flush=True)
 
         if not self.current_playlist:
-            # Fallback: use any available track
+            # Fallback
             for t in TRACKS:
-                if get_track_path(t):
-                    self.current_playlist.append(t)
+                fp = get_track_path(t["id"])
+                if fp:
+                    track = t.copy()
+                    track["file_path"] = fp
+                    track["style"] = t["genre"]
+                    self.current_playlist.append(track)
                     break
 
     def next_track(self):
@@ -145,7 +149,6 @@ class MusicScheduler:
         return result
 
     def current_track(self):
-        """Get currently playing track."""
         if self.history:
             tid = self.history[-1]
             for t in TRACKS:

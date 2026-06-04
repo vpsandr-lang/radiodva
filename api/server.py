@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
-"""RADIO DVA API — File-based streaming server."""
-
-import json
-import os
-import time
-import random
-import mimetypes
-import pathlib
+"""RADIO DVA API — HTTP server with streaming."""
+import json, os, time, random, mimetypes, pathlib, hashlib
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 
@@ -15,25 +9,6 @@ ROOT_DIR = os.path.dirname(DATA_DIR)
 NP_FILE = os.path.join(DATA_DIR, 'now-playing.json')
 MESSAGES_FILE = os.path.join(DATA_DIR, 'messages.json')
 PORT = int(os.environ.get('PORT', 5050))
-STREAM_FILE = "/tmp/radio/current_broadcast.mp3"
-
-# Read the file into memory on start
-_stream_data = b""
-_stream_mtime = 0
-
-
-def _get_stream_data():
-    global _stream_data, _stream_mtime
-    try:
-        mtime = os.path.getmtime(STREAM_FILE)
-        if mtime != _stream_mtime:
-            with open(STREAM_FILE, 'rb') as f:
-                _stream_data = f.read()
-            _stream_mtime = mtime
-    except (FileNotFoundError, OSError):
-        if not _stream_data:
-            _stream_data = b""
-    return _stream_data
 
 
 class APIHandler(BaseHTTPRequestHandler):
@@ -62,10 +37,8 @@ class APIHandler(BaseHTTPRequestHandler):
 
         except Exception as e:
             print(f"Error: {e}", flush=True)
-            try:
-                self._serve_error(500, str(e))
-            except:
-                pass
+            try: self._serve_error(500, str(e))
+            except: pass
 
     def do_POST(self):
         parsed = urlparse(self.path)
@@ -105,8 +78,6 @@ class APIHandler(BaseHTTPRequestHandler):
             else:
                 return self._serve_error(404, "Not Found")
         content_type, _ = mimetypes.guess_type(filepath)
-        if content_type is None:
-            content_type = 'application/octet-stream'
         ext = pathlib.Path(filepath).suffix.lower()
         mime_map = {
             '.js': 'application/javascript', '.css': 'text/css',
@@ -116,7 +87,7 @@ class APIHandler(BaseHTTPRequestHandler):
             '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
             '.ico': 'image/x-icon', '.webp': 'image/webp',
         }
-        content_type = mime_map.get(ext, content_type)
+        content_type = mime_map.get(ext, content_type if content_type else 'application/octet-stream')
         try:
             with open(filepath, 'rb') as f:
                 data = f.read()
@@ -138,12 +109,12 @@ class APIHandler(BaseHTTPRequestHandler):
         self.wfile.write(str(message).encode())
 
     def _serve_stream(self):
-        """Serve MP3 audio continuously - the CORRECT way for browsers."""
-        data = _get_stream_data()
+        """Serve the latest MP3 segment."""
+        from api.file_broadcaster import get_stream_data
+        data = get_stream_data()
         if not data:
             self._serve_error(503, "Stream not ready")
             return
-
         self.send_response(200)
         self.send_header('Content-Type', 'audio/mpeg')
         self.send_header('Content-Length', str(len(data)))
@@ -151,21 +122,17 @@ class APIHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Accept-Ranges', 'bytes')
         self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.wfile.write(data)
+        except:
+            pass
 
     def _get_np(self):
         try:
             with open(NP_FILE) as f:
                 return json.load(f)
         except:
-            return {
-                "title": "RADIO DVA",
-                "artist": "Двойная Волна",
-                "flag": "🎵",
-                "host": "Алекс",
-                "listeners": 0,
-                "status": "broadcasting",
-            }
+            return {"title": "RADIO DVA", "artist": "Двойная Волна", "flag": "🎵", "host": "Алекс", "listeners": 0, "status": "broadcasting"}
 
     def _get_messages(self):
         try:
@@ -180,22 +147,12 @@ class APIHandler(BaseHTTPRequestHandler):
 
     def _get_stats(self):
         np = self._get_np()
-        return {
-            "listeners": 0,
-            "today_peak": random.randint(5, 30),
-            "tracks_played": np.get("tracks_played", 0),
-            "uptime_hours": np.get("uptime_hours", 0),
-            "host": np.get("host", "Алекс"),
-            "status": np.get("status", "broadcasting"),
-        }
+        return {"listeners": 0, "today_peak": random.randint(5, 30), "tracks_played": np.get("tracks_played", 0), "uptime_hours": np.get("uptime_hours", 0), "host": np.get("host", "Алекс"), "status": np.get("status", "broadcasting")}
 
     def _get_hosts(self):
         np = self._get_np()
-        current_host = np.get("host", "Алекс")
-        return [
-            {"name": "Алекс", "style": "энергичный", "emoji": "🎧", "on_air": current_host == "Алекс"},
-            {"name": "Лина", "style": "плавная", "emoji": "🎙️", "on_air": current_host == "Лина"}
-        ]
+        ch = np.get("host", "Алекс")
+        return [{"name": "Алекс", "style": "энергичный", "emoji": "🎧", "on_air": ch == "Алекс"}, {"name": "Лина", "style": "плавная", "emoji": "🎙️", "on_air": ch == "Лина"}]
 
     def _serve_json(self, data, code=200):
         self.send_response(code)
@@ -222,7 +179,6 @@ def run_server():
     except KeyboardInterrupt:
         print("Stopping...", flush=True)
         server.shutdown()
-
 
 if __name__ == '__main__':
     run_server()
