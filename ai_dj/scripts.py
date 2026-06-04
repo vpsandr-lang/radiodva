@@ -1,52 +1,42 @@
-"""RADIO DVA AI — Script Generator with human-like DJ templates."""
-import random, os, json, re
+"""RADIO DVA AI — Human-like radio DJ scripts."""
+import random
 
 DJ_ALEX = {
     "name": "Алекс",
     "intro_templates": [
-        "RADIO DVA на связи! {name} у микрофона, слушаем — {track} от {artist}!",
-        "Йо! Это {name} с RADIO DVA. Ловите: {track} — {artist}. Погнали!",
-        "В эфире {name}! Прямо сейчас: {track}, {artist}. Огонь!",
-        "С вами {name} и RADIO DVA! {track} — {artist}. Не выключай!",
-        "Как дела? {name} приветствует! Слушаем {track} от {artist}.",
-        "А вот и свежий трек! {name} для вас. {track} — {artist}, оцените!",
+        "RADIO DVA, привет! Это Алекс, и мы начинаем с {track} от {artist}. Погнали!",
+        "С вами Алекс на RADIO DVA! Слушаем {track} — {artist}. Отличный выбор для этого момента.",
+        "Йо! Алекс здесь. Прямо сейчас {track} от {artist}. Наслаждайтесь!",
+        "RADIO DVA в эфире, у микрофона Алекс. {track} — {artist}. Поехали!",
+        "Привет, это Алекс! Двойная Волна играет: {track} от {artist}.",
+        "Алекс на связи! {track} — {artist}. Именно то, что нужно.",
+        "Слушаем RADIO DVA вместе с Алексом. {track} от {artist} уже в эфире.",
     ],
     "outro_templates": [
-        "Это был {track} от {artist}. {name} был с тобой.",
-        "{track} — {artist}. Классный трек! {name} провожает.",
-        "Зарядились? {track} от {artist}. Остаёмся на RADIO DVA!",
-        "{track} от {artist} только что прозвучал. {name} с вами был.",
-        "Отличный трек! {track} — {artist}. Дальше будет ещё интереснее.",
-    ],
-    "jokes": [
-        "Почему диджей не ходит в спортзал? Он и так качает!",
-        "Что сказал динамик? — 'Мне нечего скрывать!'",
-        "Музыкант упал со сцены: 'Я просто взял нижнюю ноту!'",
+        "Это был {track} от {artist}. Алекс был с вами, остаёмся на RADIO DVA.",
+        "{track} — {artist} прозвучал. Алекс провожает, дальше будет круче!",
+        "Классный трек! {track} от {artist}. С вами был Алекс, не переключайтесь.",
+        "{track} от {artist} только что завершился. Это Алекс, продолжаем слушать.",
+        "Отлично пошло! {track} — {artist}. Алекс остаётся, вы со мной?",
     ],
 }
 
 DJ_LINA = {
     "name": "Лина",
     "intro_templates": [
-        "Привет, это Лина. Твой момент начинается с {track} — {artist}.",
-        "Слышишь? {track} от {artist} уже в эфире. Лина у микрофона.",
-        "Добрый вечер. {name} с вами. {track} — {artist}. Слушай.",
-        "RADIO DVA — твоя волна. {track} от {artist}. Идеальное звучание.",
-        "Привет, это {name}. {track} — {artist} для вас.",
+        "Привет, это Лина. Начинаем с {track} — {artist}. Отличный трек.",
+        "С вами Лина. {track} от {artist} специально для вас на RADIO DVA.",
+        "Лина в эфире. {track} — {artist}. Ловите настроение!",
+        "Добрый вечер, это Лина. {track} от {artist} звучит прямо сейчас.",
+        "Тишина отменяется! Лина включает {track} от {artist}.",
     ],
     "outro_templates": [
-        "{track} от {artist}... красиво. Лина была с вами.",
-        "Прекрасный трек: {track} — {artist}. Это Лина, продолжаем.",
-        "Музыка — лучшее. {track} от {artist}. Не прощаюсь.",
-        "{track} от {artist} завершился. Лина желает отличного настроения!",
-    ],
-    "jokes": [
-        "Почему радио не спит? Потому что у него есть ведущие!",
-        "Что сказала пластинка проигрывателю? — 'Ты меня кружишь!'",
-        "Говорят, от хорошей музыки вырабатывается дофамин. Слушайте на здоровье!",
+        "{track} от {artist} прозвучал. Лина была с вами. Остаёмся на волне!",
+        "Прекрасно! {track} — {artist}. Это Лина, дальше — ещё интереснее.",
+        "{track} от {artist} завершился. С вами была Лина, не уходите.",
+        "Спасибо, что слушаете. {track} — {artist}. Лина провожает, до встречи в следующем треке!",
     ],
 }
-
 
 class ScriptGenerator:
     def __init__(self, dj_name="Алекс"):
@@ -60,11 +50,22 @@ class ScriptGenerator:
         intro = random.choice(self.dj["intro_templates"]).format(
             name=self.dj["name"], track=track["title"], artist=track["artist"])
         
-        # Add joke sometimes
-        if random.random() < 0.15:
-            intro += " Кстати, " + random.choice(self.dj["jokes"]).lower()
+        # Add short comment about the track sometimes
+        extras = [
+            " Отличный трек, кстати.",
+            " Знаете этот трек?",
+            " Один из моих любимых!",
+            "",
+            " Классика!",
+        ]
+        if random.random() < 0.25:
+            intro += random.choice(extras)
         
         outro = random.choice(self.dj["outro_templates"]).format(
             name=self.dj["name"], track=track["title"], artist=track["artist"])
+        
+        # Sometimes add a "next up" teaser if next_track provided
+        if next_track and random.random() < 0.2:
+            outro += f" А после — {next_track['title']} от {next_track['artist']}."
         
         return intro, outro
