@@ -1,0 +1,18 @@
+[Unit]
+Description=RADIO DVA — AI-Powered Online Radio
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/radio
+ExecStart=/usr/bin/python3 -u /opt/radio/run.py
+Restart=always
+RestartSec=10
+StartLimitInterval=0
+LimitRSS=800M
+LimitAS=1G
+
+[Install]
+WantedBy=multi-user.target
