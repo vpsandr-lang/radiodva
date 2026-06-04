@@ -1,5 +1,6 @@
 /**
  * RADIO DVA — Audio Player (Segment-based streaming)
+ * Fixed: no auto-resume after pause.
  */
 class RadioPlayer {
     constructor() {
@@ -68,12 +69,13 @@ class RadioPlayer {
     }
 
     _onError() {
-        this.isPlaying = false;
         this.emit('error', 'Ошибка загрузки. Переподключаюсь...');
         this.emit('status', 'stopped');
-        // Retry after 3s (isPlaying was already set to false, so use a flag)
+        // Only auto-retry if user still wants to play
+        if (!this.isPlaying) return;
         if (this.retryTimeout) clearTimeout(this.retryTimeout);
         this.retryTimeout = setTimeout(() => {
+            if (!this.isPlaying) return;
             this.emit('status', 'connecting');
             this.audio.src = this.streamUrl + '?t=' + Date.now();
             this.audio.load();
@@ -82,13 +84,19 @@ class RadioPlayer {
     }
 
     _onEnded() {
-        // Load next segment
+        // End of segment - only load next if user is still listening
+        if (!this.isPlaying) {
+            this.emit('status', 'stopped');
+            return;
+        }
         this.emit('status', 'connecting');
         this.audio.src = this.streamUrl + '?t=' + Date.now();
         this.audio.load();
         this.audio.play().catch(() => {
-            // Retry once after 2s
+            // Retry once after 2s, but only if user wants to play
+            if (!this.isPlaying) return;
             setTimeout(() => {
+                if (!this.isPlaying) return;
                 this.audio.src = this.streamUrl + '?t=' + Date.now();
                 this.audio.load();
                 this.audio.play().catch(() => {});
