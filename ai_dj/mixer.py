@@ -48,7 +48,7 @@ class AudioMixer:
         
         # amix: mix all inputs
         nb_inputs = len(files)
-        filter_str = f"amix=inputs={nb_inputs}:duration=first:dropout_transition=2"
+        filter_str = f"amix=inputs={nb_inputs}:duration=longest:dropout_transition=2"
         
         # Volume adjustments
         # Intro/outro: 0.9, music: 0.65

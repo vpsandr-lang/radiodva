@@ -94,10 +94,9 @@ class FileBroadcaster:
 
         if mp3_path and os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 1000:
             # Copy to latest
-            # Atomic write: copy to temp, then rename
-        tmp_seg = LATEST_SEGMENT + '.tmp'
-        shutil.copy2(mp3_path, tmp_seg)
-        os.replace(tmp_seg, LATEST_SEGMENT)
+            tmp_seg = LATEST_SEGMENT + '.tmp'
+            shutil.copy2(mp3_path, tmp_seg)
+            os.replace(tmp_seg, LATEST_SEGMENT)
             
             # Save with segment number
             seg_file = os.path.join(SEGMENT_DIR, f"seg_{self.segment_count:04d}.mp3")
